@@ -1,0 +1,27 @@
+#!/bin/bash
+# After suspend the ELAN TOD reader re-enumerates (ID_PERSIST=0) while
+# fprintd still holds the old USB claim. Restart the daemon once the
+# device is back, and keep USB runtime PM off.
+if [[ $1 != post ]]; then
+  exit 0
+fi
+
+waited=0
+while ! lsusb -d 04f3:0c4b >/dev/null 2>&1; do
+  if (( waited >= 10 )); then
+    logger -t elan-fingerprint "reader did not reappear after resume"
+    exit 0
+  fi
+  sleep 0.5
+  waited=$((waited + 1))
+done
+
+for d in /sys/bus/usb/devices/*; do
+  if [[ -f $d/idVendor && $(<"$d/idVendor") == 04f3 && -f $d/idProduct && $(<"$d/idProduct") == 0c4b ]]; then
+    echo on >"$d/power/control" 2>/dev/null || true
+    echo -1 >"$d/power/autosuspend" 2>/dev/null || true
+  fi
+done
+
+systemctl restart fprintd.service >/dev/null 2>&1 || true
+logger -t elan-fingerprint "reset reader after resume"

@@ -1,0 +1,5 @@
+#%PAM-1.0
+# timeout=15: ELAN TOD overheats if left in verify for minutes. The lock
+# plugin retries after 15s, so this is a listen window, not a hard fail.
+auth       required                    pam_fprintd.so timeout=15 max-tries=1
+account    include                     system-local-login
