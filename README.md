@@ -134,6 +134,10 @@ In `~/.config/omarchy/plugins/$USER.lock/Service.qml`:
     interval: 15000
 ```
 
+**Pause verify while the panel is blank.** The lock screen turns DPMS off 5s after lock and keeps `pam_fprintd` armed. This chip then hits `Device disabled to prevent overheating` / `efd_init return -1`, so a tap after you come back does nothing.
+
+Add `property bool fingerprintPaused: false`. Do not retry or start a verify while it is true. In `runBlank` call `pauseFingerprintRetries()` (set the flag, stop the retry timers, leave an in-flight verify alone). On wake (`runWake`, lid/screens change, DPMS back on), if it was paused, clear the flag and start a listen after ~600ms instead of waiting out the 15s retry gap.
+
 Saving under `~/.config/omarchy/plugins/` reloads the shell. If it does not:
 
 ```bash
@@ -143,10 +147,10 @@ omarchy-shell shell rescanPlugins
 ## How to unlock
 
 - Panel still up: **tap**.
-- Screen black: **wake first** (Enter, a key, or the mouse), **then tap**.
+- Screen black: **wake first** (Enter, a key, or the mouse), **then tap**. A finger on the reader does not turn the panel back on.
 - Full suspend: wake the panel, then tap. The sleep hook should already have reset the reader.
 
-The lock listens for 15 seconds, rests 15 seconds, then listens again. Miss the window: wait, or type the password.
+While the lock screen is visible, the reader listens for 15 seconds, rests 15 seconds, then listens again. After the panel blanks, listening stops so the firmware can cool; the next wake starts a fresh 15-second window. Miss it: nudge the mouse, or type the password.
 
 ## If it wedges again
 
@@ -175,10 +179,33 @@ timeout 5 fprintd-verify
 # "Verify started!" is enough; Ctrl+C or the timeout is fine.
 ```
 
+## Zorin OS
+
+Zorin 18 is Ubuntu 24.04 (`noble`). Zorin 17 is Ubuntu 22.04 (`jammy`). On either one, stock `libfprint` still cannot drive `04f3:0c4b`, and the Arch packages from the section above do not apply. Ubuntu already ships the TOD host as `libfprint-2-tod1`. The Elan module is `libfprint-2-tod1-elan` from [ppa:libfprint-tod1-group/ppa](https://launchpad.net/~libfprint-tod1-group/+archive/ubuntu/ppa) (`0.1.0+2404` on noble, `0.1.0+2204` on jammy). That build links OpenSSL 3, so `openssl-1.1` is not part of this install.
+
+[`install-zorin.sh`](install-zorin.sh) is self-contained. Download that one file on the Zorin user account and run it:
+
+```bash
+chmod +x install-zorin.sh
+./install-zorin.sh
+```
+
+It installs `fprintd`, `libpam-fprintd`, `libfprint-2-tod1`, and `libfprint-2-tod1-elan`, enables the fingerprint PAM profile, and writes the same autosuspend rule and resume hook. The packaged driver rule `60-libfprint-2-tod1-elan.rules` sets `power/control=auto`. The `99-` rule is what puts it back to `on`.
+
+Then enroll again. Prints in `/var/lib/fprint` belong to the install they were recorded on.
+
+```bash
+fprintd-enroll
+fprintd-verify
+```
+
+The Omarchy lock PAM file and the lock-plugin edits are not installed here. GNOME enrolls from Settings, Users, Fingerprint Login, and `libpam-fprintd` covers login and sudo.
+
 ## Files in this repo
 
 | Path | Installs to |
 | --- | --- |
+| [`install-zorin.sh`](install-zorin.sh) | run on Zorin; writes the two rows below |
 | [`files/99-elan-fingerprint.rules`](files/99-elan-fingerprint.rules) | `/etc/udev/rules.d/99-elan-fingerprint.rules` |
 | [`files/elan-fingerprint`](files/elan-fingerprint) | `/usr/lib/systemd/system-sleep/elan-fingerprint` |
 | [`files/omarchy-lock-fingerprint`](files/omarchy-lock-fingerprint) | `/etc/pam.d/omarchy-lock-fingerprint` |

@@ -1,3 +1,5 @@
 # ELAN 04f3:0c4b: USB autosuspend leaves the TOD reader asleep after
 # idle/screensaver, and fprintd cannot wake it for lock-screen verify.
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="04f3", ATTR{idProduct}=="0c4b", TEST=="power/control", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
+# The packaged driver rule (60-libfprint-2-tod1-elan.rules) sets
+# power/control=auto. This file is named 99- so it wins on add and change.
+SUBSYSTEM=="usb", ATTR{idVendor}=="04f3", ATTR{idProduct}=="0c4b", TEST=="power/control", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
