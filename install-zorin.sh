@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Elan 04f3:0c4b fingerprint reader on Zorin OS (Ubuntu 22.04 or 24.04).
+# Elan 04f3:0c4b fingerprint reader on Ubuntu 22.04, Ubuntu 24.04, and Zorin OS.
 #
-# One file is enough. From the Zorin user account:
+# One file is enough. From your normal user account:
 #   chmod +x install-zorin.sh
 #   ./install-zorin.sh
 #
 # The script installs Ubuntu's TOD host, the Lenovo Elan module from
-# ppa:libfprint-tod1-group/ppa, then the autosuspend rule and resume hook
-# used on the Omarchy side of this laptop. It does not enroll a finger.
+# ppa:libfprint-tod1-group/ppa, then the autosuspend rule and resume hook.
+# It does not enroll a finger. Zorin 17 follows jammy; Zorin 18 follows noble.
 
 set -euo pipefail
 
@@ -44,6 +44,7 @@ list="/etc/apt/sources.list.d/libfprint-tod1-group.list"
 rule_path="/etc/udev/rules.d/99-elan-fingerprint.rules"
 hook_path="/usr/lib/systemd/system-sleep/elan-fingerprint"
 
+log "Elan 04f3:0c4b installer for Ubuntu 22.04/24.04 and Zorin"
 log "Ubuntu series: ${codename} (${PRETTY_NAME:-unknown})"
 log "Installing fprintd, the TOD host, curl, and gnupg"
 apt-get update
